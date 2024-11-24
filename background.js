@@ -1,6 +1,14 @@
 let workflows = {};
 let suspendedTabs = new Set();
 
+chrome.storage.local.clear(function () {
+    if (chrome.runtime.lastError) {
+        console.error("Error clearing storage:", chrome.runtime.lastError);
+    } else {
+        console.log("Local storage cleared.");
+    }
+});
+
 // Listen for tab changes and implement workflows
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (changeInfo.status === "complete") {

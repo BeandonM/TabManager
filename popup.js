@@ -1,17 +1,21 @@
-let workflows = {}; // Stores workflows with tab IDs
+let workflows = {}; // Store workflows locally
 
-// Initialize the UI
-document.addEventListener("DOMContentLoaded", () => {
-    loadOpenTabs();
-    updateUI();
+// Load workflows and tabs on popup open
+document.addEventListener("DOMContentLoaded", async () => {
+    await loadWorkflows(); // Load workflows from storage
+    loadOpenTabs(); // Load currently open tabs
+    updateUI(); // Update the UI
 });
 
 // Add a new workflow
-document.getElementById("newWorkflow").addEventListener("click", () => {
+document.getElementById("newWorkflow").addEventListener("click", async () => {
     const workflowName = prompt("Enter workflow name:");
-    if (workflowName) {
+    if (workflowName && !workflows[workflowName]) {
         workflows[workflowName] = [];
+        await saveWorkflows(); // Save workflows to storage
         updateUI();
+    } else if (workflows[workflowName]) {
+        alert("Workflow with this name already exists!");
     }
 });
 
@@ -61,16 +65,89 @@ function updateUI() {
             e.preventDefault(); // Allow drop
         });
 
-        workflowDiv.addEventListener("drop", (e) => {
+        workflowDiv.addEventListener("drop", async (e) => {
             e.preventDefault();
-            const tabId = e.dataTransfer.getData("tabId"); // Get the dragged tab ID
+
+            const tabId = parseInt(e.dataTransfer.getData("tabId"), 10); // Get the dragged tab ID
+            console.log(`Tab dropped with ID: ${tabId}`);
+
+            if (isNaN(tabId)) {
+                console.warn("Invalid tab ID detected during drop event.");
+                return;
+            }
+
             if (!workflows[workflowName].includes(tabId)) {
                 workflows[workflowName].push(tabId); // Add tab to the workflow
+                console.log(`Added tab ID ${tabId} to workflow "${workflowName}".`);
+
+                await groupTabsInBrowser(workflowName, workflows[workflowName]); // Group tabs in browser with workflow name
+                await saveWorkflows(); // Save workflows to storage
                 updateUI(); // Refresh the UI
+            } else {
+                console.log(`Tab ID ${tabId} is already part of workflow "${workflowName}".`);
             }
         });
 
         workflowDiv.appendChild(workflowList);
         workflowsDiv.appendChild(workflowDiv);
     }
+}
+
+async function groupTabsInBrowser(workflowName, tabIds) {
+    console.log(`Attempting to group tabs for workflow "${workflowName}" with tab IDs:`, tabIds);
+
+    try {
+        // Validate tab IDs
+        const validTabIds = await validateTabIds(tabIds);
+        console.log(`Valid Tab IDs for workflow "${workflowName}":`, validTabIds);
+
+        if (validTabIds.length === 0) {
+            console.warn(`No valid tabs to group for workflow "${workflowName}".`);
+            return;
+        }
+
+        // Group the valid tabs and get the group ID
+        const groupId = await chrome.tabs.group({ tabIds: validTabIds });
+
+        if (groupId !== undefined) {
+            // Explicitly update the group name to match the workflow name
+            await chrome.tabGroups.update(groupId, { title: workflowName });
+            console.log(`Successfully grouped tabs for workflow "${workflowName}" with groupId: ${groupId}`);
+        } else {
+            console.error(`Failed to create a group for workflow: ${workflowName}`);
+        }
+    } catch (error) {
+        console.error(`Error grouping tabs for workflow "${workflowName}":`, error.message);
+    }
+}
+
+async function validateTabIds(tabIds) {
+    const validTabIds = [];
+
+    for (const tabId of tabIds) {
+        try {
+            const tab = await chrome.tabs.get(tabId);
+            if (tab && tab.url && !tab.url.startsWith("chrome://") && !tab.url.startsWith("edge://")) {
+                validTabIds.push(tabId);
+            } else {
+                console.warn(`Tab ID ${tabId} is invalid or restricted (URL: ${tab?.url}).`);
+            }
+        } catch (error) {
+            console.warn(`Error accessing tab ID ${tabId}:`, error.message);
+        }
+    }
+
+    console.log("Valid Tab IDs:", validTabIds);
+    return validTabIds;
+}
+
+// Save workflows to storage
+async function saveWorkflows() {
+    await chrome.storage.local.set({ workflows });
+}
+
+// Load workflows from storage
+async function loadWorkflows() {
+    const result = await chrome.storage.local.get("workflows");
+    workflows = result.workflows || {};
 }
