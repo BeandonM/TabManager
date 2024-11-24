@@ -2,3 +2,12 @@ body {
     background-color: #121212;
     color: #ffffff;
 }
+
+.workflow {
+    border: 1px solid #ffffff;
+    border-radius: 5px;
+}
+
+.list-group-item {
+    cursor: grab;
+}
