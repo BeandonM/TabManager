@@ -19,17 +19,40 @@ document.getElementById("newWorkflow").addEventListener("click", async () => {
     }
 });
 
-// Load open tabs into the list
 function loadOpenTabs() {
     chrome.tabs.query({}, (tabs) => {
         const tabsList = document.getElementById("tabsList");
         tabsList.innerHTML = ""; // Clear the list
+
         tabs.forEach((tab) => {
+            // Ignore tabs with restricted URLs
+            if (tab.url.startsWith("chrome://") || tab.url.startsWith("edge://")) {
+                console.warn(`Skipping restricted tab with URL: ${tab.url}`);
+                return;
+            }
+
+            // Create a list item for each tab
             const listItem = document.createElement("li");
-            listItem.className = "list-group-item bg-dark text-light";
+            listItem.className = "list-group-item bg-dark text-light d-flex align-items-center";
             listItem.draggable = true;
-            listItem.textContent = tab.title || tab.url;
             listItem.dataset.tabId = tab.id; // Save the tab ID for reference
+
+            // Tab favicon (if available)
+            const tabImage = document.createElement("img");
+            tabImage.src = tab.favIconUrl || "default-icon.png"; // Use a placeholder if no favicon is available
+            tabImage.alt = "Tab Icon";
+            tabImage.className = "tab-icon me-2";
+            tabImage.onerror = () => {
+                tabImage.src = "default-icon.png"; // Handle broken favicon URLs
+            };
+
+            // Tab title
+            const tabTitle = document.createElement("span");
+            tabTitle.textContent = tab.title || tab.url;
+
+            // Append elements
+            listItem.appendChild(tabImage);
+            listItem.appendChild(tabTitle);
 
             // Add drag event listeners
             listItem.addEventListener("dragstart", (e) => {
@@ -80,7 +103,7 @@ function updateUI() {
                 workflows[workflowName].push(tabId); // Add tab to the workflow
                 console.log(`Added tab ID ${tabId} to workflow "${workflowName}".`);
 
-                await groupTabsInBrowser(workflowName, workflows[workflowName]); // Group tabs in browser with workflow name
+                await groupTabsInBrowser(workflowName, workflows[workflowName]); // Group tabs in browser
                 await saveWorkflows(); // Save workflows to storage
                 updateUI(); // Refresh the UI
             } else {
@@ -108,14 +131,12 @@ async function groupTabsInBrowser(workflowName, tabIds) {
 
         // Group the valid tabs and get the group ID
         const groupId = await chrome.tabs.group({ tabIds: validTabIds });
+        console.log(`Created group with ID ${groupId} for workflow "${workflowName}"`);
 
-        if (groupId !== undefined) {
-            // Explicitly update the group name to match the workflow name
-            await chrome.tabGroups.update(groupId, { title: workflowName });
-            console.log(`Successfully grouped tabs for workflow "${workflowName}" with groupId: ${groupId}`);
-        } else {
-            console.error(`Failed to create a group for workflow: ${workflowName}`);
-        }
+        // Update the group name to match the workflow
+        console.log(groupId + " : " + workflowName);
+        await chrome.tabGroups.update(groupId, { title: workflowName });
+        console.log(`Updated group name to "${workflowName}" for group ID ${groupId}`);
     } catch (error) {
         console.error(`Error grouping tabs for workflow "${workflowName}":`, error.message);
     }

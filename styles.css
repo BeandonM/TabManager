@@ -1,6 +1,12 @@
 body {
     background-color: #121212;
     color: #ffffff;
+    min-width: 400px;
+    max-width: 400px;
+    min-height: 600px;
+    max-height: 600px;
+    overflow-y: auto;
+    /* Enable scrolling if content exceeds the height */
 }
 
 .workflow {
@@ -9,5 +15,24 @@ body {
 }
 
 .list-group-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px;
     cursor: grab;
+}
+
+.tab-icon {
+    width: 24px;
+    height: 24px;
+    border-radius: 2px;
+    object-fit: contain;
+}
+
+/* Adjust workflow and tabs sections */
+#tabsList,
+#workflows {
+    max-height: 400px;
+    overflow-y: auto;
+    /* Allow scrolling if the section overflows */
 }

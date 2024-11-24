@@ -5,6 +5,7 @@
     "description": "Efficiently manage, organize, and optimize browser tabs with workflows, performance tracking, and syncing.",
     "permissions": [
         "tabs",
+        "tabGroups",
         "storage",
         "identity",
         "idle",
