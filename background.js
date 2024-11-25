@@ -26,15 +26,33 @@ chrome.idle.onStateChanged.addListener((state) => {
 });
 
 function suspendTab(tabId) {
-    chrome.tabs.update(tabId, { url: "chrome-extension://<extension_id>/suspended.html" });
-    suspendedTabs.add(tabId);
+    chrome.tabs.get(tabId, (tab) => {
+        if (chrome.runtime.lastError) {
+            console.error(`Error retrieving tab ${tabId}:`, chrome.runtime.lastError.message);
+            return;
+        }
+
+        const tabUrl = tab.url;
+
+        // Prevent suspension of restricted URLs or already suspended tabs
+        if (!tabUrl || tabUrl.startsWith("chrome://") || tabUrl.startsWith("edge://") || tabUrl.startsWith("chrome-extension://")) {
+            console.warn(`Cannot suspend tab with restricted URL: ${tabUrl}`);
+            return;
+        }
+
+        chrome.tabs.update(tabId, { url: "chrome-extension://<extension_id>/suspended.html" });
+        suspendedTabs.add(tabId);
+        console.log(`Tab ${tabId} suspended.`);
+    });
 }
 
 function unsuspendTab(tabId) {
     if (suspendedTabs.has(tabId)) {
         suspendedTabs.delete(tabId);
+        console.log(`Tab ${tabId} unsuspended.`);
     }
 }
+
 
 function updateTabMemoryUsage(tabId) {
     // Get the tab's URL to check if it is accessible
@@ -78,5 +96,15 @@ function updateTabMemoryUsage(tabId) {
 }
 
 function getMemoryUsage() {
-    return Math.random() * 100; // Mock memory usage; replace with real data
+    if (performance?.memory) {
+        const usedJSHeapSize = performance.memory.usedJSHeapSize; // Bytes
+        const totalJSHeapSize = performance.memory.totalJSHeapSize; // Bytes
+        const memoryUsageInMB = (usedJSHeapSize / (1024 * 1024)).toFixed(2);
+
+        console.log(`Used JS Heap Size: ${memoryUsageInMB} MB out of ${(totalJSHeapSize / (1024 * 1024)).toFixed(2)} MB`);
+        return memoryUsageInMB;
+    } else {
+        console.warn("Memory performance API is not available in this browser.");
+        return null;
+    }
 }

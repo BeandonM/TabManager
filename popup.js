@@ -170,7 +170,7 @@ async function validateTabIds(tabIds) {
     for (const tabId of tabIds) {
         try {
             const tab = await chrome.tabs.get(tabId);
-            if (tab && tab.url && !tab.url.startsWith("chrome://") && !tab.url.startsWith("edge://")) {
+            if (tab?.url && !tab.url.startsWith("chrome://") && !tab.url.startsWith("edge://")) {
                 validTabIds.push(tabId);
             } else {
                 console.warn(`Tab ID ${tabId} is invalid or restricted (URL: ${tab?.url}).`);
