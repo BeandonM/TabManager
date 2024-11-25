@@ -1,4 +1,5 @@
 let workflows = {}; // Store workflows locally
+let currentContextMenu = null;
 
 // Load workflows and tabs on popup open
 document.addEventListener("DOMContentLoaded", async () => {
@@ -251,8 +252,14 @@ async function deleteWorkflow(workflowName) {
     updateUI(); // Refresh the UI
 }
 
-// Show the context menu for a workflow
 function showContextMenu(x, y, workflowName) {
+    // Remove any existing context menu
+    if (currentContextMenu) {
+        currentContextMenu.remove();
+        currentContextMenu = null;
+    }
+
+    // Create a new context menu
     const menu = document.createElement("div");
     menu.className = "context-menu";
     menu.style.top = `${y}px`;
@@ -267,7 +274,8 @@ function showContextMenu(x, y, workflowName) {
         if (newName && newName !== workflowName) {
             await renameWorkflow(workflowName, newName);
         }
-        document.body.removeChild(menu);
+        menu.remove();
+        currentContextMenu = null;
     });
 
     // Delete option
@@ -278,19 +286,24 @@ function showContextMenu(x, y, workflowName) {
         if (confirm(`Are you sure you want to delete the workflow "${workflowName}"?`)) {
             await deleteWorkflow(workflowName);
         }
-        document.body.removeChild(menu);
+        menu.remove();
+        currentContextMenu = null;
     });
 
     menu.appendChild(renameOption);
     menu.appendChild(deleteOption);
     document.body.appendChild(menu);
 
+    // Track the current context menu
+    currentContextMenu = menu;
+
     // Remove the menu when clicking outside
     document.addEventListener(
         "click",
         () => {
-            if (document.body.contains(menu)) {
-                document.body.removeChild(menu);
+            if (currentContextMenu) {
+                currentContextMenu.remove();
+                currentContextMenu = null;
             }
         },
         { once: true }
